@@ -1,9 +1,7 @@
-RemoveIdentification <- function(SpectraDF, Search_results)
+RemoveIdentification <- function(SpectraDF, Spec.ID)
 {
-  IdentifiedSpectra <- Search_results@spectra
-  rownames(IdentifiedSpectra) <- IdentifiedSpectra$id 
-  #Remove identified spectra from MGF 
-  SpectraDF <- SpectraDF[-rownames(IdentifiedSpectra),]
+  #Remove identified spectra from MGF
+  SpectraDF <- data.frame(SpectDF[!rownames(SpectDF) %in% Spec.ID,]) 
   return(SpectraDF)
 }
 
