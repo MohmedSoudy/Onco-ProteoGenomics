@@ -10,10 +10,11 @@ library(markdown)
 library(rTANDEM)
 library(XML)
 library(DT)
-source("Scripts/ConstructSpectra.R")
-source("Scripts/TandemSearch.R")
-source("Scripts/RemoveIdentification.R")
-source("Scripts/WriteSpectra.R")
+source("Shiny/Scripts/ConstructSpectra.R")
+source("Shiny/Scripts/TandemSearch.R")
+source("Shiny/Scripts/RemoveIdentification.R")
+source("Shiny/Scripts/Pars Spectrum.R")
+source("Shiny/Scripts/WriteSpectra.R")
 
 
 ui <- dashboardPage(
@@ -25,7 +26,8 @@ ui <- dashboardPage(
       menuItem("Data analysis", tabName = "Data_analysis", icon = icon("database"),
                menuSubItem("Upload data", tabName = "upload", icon = icon("upload")),
                menuSubItem("Database Search", tabName = "search", icon = icon("search")),
-               menuSubItem("Viuslaization", tabName = "Visualaize", icon = icon("chart-bar"))
+               menuSubItem("Viuslaization", tabName = "Visualaize", icon = icon("chart-bar")),
+               menuSubItem("Remove Identified Spectra", tabName = "remove", icon = icon("trash-alt"))
                )#Data analysis menu 
     )#Sidebar menu
   ),#Side bar closing
@@ -37,7 +39,7 @@ ui <- dashboardPage(
     tabItems(
       # Boxes need to be put in a row (or column)
       tabItem(tabName = "Doc",
-              includeMarkdown("assets/Documentation.md")), #Documentation 
+              includeMarkdown("Shiny/assets/Documentation.md")), #Documentation 
       tabItem(tabName = "upload",
               h2("Upload your spectral files to start the analysis"),
               h6("Spectral files shoud be MGF or RAW files"),
@@ -56,7 +58,18 @@ ui <- dashboardPage(
           tabPanel("Proteins", withLoader(DT::dataTableOutput("Proteins"), type = "html", loader = "loader6")),
           tabPanel("PTMs", withLoader(DT::dataTableOutput("PTMs"), type = "html", loader = "loader6"))
         )#tabset closing 
-      )#Search 
+      ),#Search
+      tabItem(tabName = "Visualaize", 
+              tabPanel("Spectral visualization", 
+                       h2("Select Spectral ID"),
+                       textInput(inputId = "SpecID", label = "Enter Spectral ID"),
+                       plotOutput("Spectraplot"))#spectra
+              ),#visualization tab
+      tabItem(tabName = "remove",
+              h2("This Tab removes the identified spectra resulting from the search and write the new spectral file into user-defined directory"),
+              shinyDirButton(id = "OutSpec",label = "Select the path to write output", title = "Select Output path"), br(),
+              actionButton(inputId = "Submit_spec", label = "Submit")
+              )#Remove and write spectra
     )#tab items
   )#Dashboard body
 )#UI
@@ -68,6 +81,9 @@ server <- function(input, output, session) {
   MGF_Path <- ""
   DBPath <- ""
   Outpath <- ""
+  Result.Path <- ""
+  
+  SpecDF <- NULL
   
   observeEvent(input$Spectra,{  
     
@@ -106,11 +122,11 @@ server <- function(input, output, session) {
   Results <- NULL
   output$Spectral <- DT::renderDataTable({
     
-   SpecDF <- Construct_SpectraDF(MGF_Path)
+   SpecDF <<- Construct_SpectraDF(MGF_Path)
    shinyalert(title = "Spectral indexing", text = paste0("Number of spectra in file: ", dim(SpecDF)[1]), type = "success")
     #Perform search 
-    Result.Path <- TandemSearch(taxon = input$Taxonomy, MGFPath = MGF_Path, FastaPath = DBPath,
-                 InputPara = "assets/par files/default_input.xml", Output_Path = paste0(Outpath, "/output.xml"))
+    Result.Path <<- TandemSearch(taxon = input$Taxonomy, MGFPath = MGF_Path, FastaPath = DBPath,
+                 InputPara = "Shiny/assets/par files/default_input.xml", Output_Path = paste0(Outpath, "/output.xml"))
     Results <<- GetResultsFromXML(Result.Path)
     Results@spectra
     
@@ -127,6 +143,38 @@ server <- function(input, output, session) {
   
   output$PTMs <- DT::renderDataTable({
     Results@ptm
+  })
+  
+  #Spectral Plotting 
+  output$Spectraplot <- renderPlot({
+    if (input$SpecID != "")
+    {
+      ms2.plot(spectrum.id = input$SpecID, result = Results)
+    }
+  })
+  
+  #Remove identification and write new mgf 
+  OutpathSpec <- ""
+  observeEvent(input$OutSpec,{
+    
+    Dirvolumes <- getVolumes()()
+    shinyDirChoose(input, 'OutSpec', roots=Dirvolumes, session=session)
+    
+    OutpathSpec <<- parseDirPath(Dirvolumes, input$OutSpec)
+    shinyalert(title = "Output path",text = OutpathSpec, type = "success")
+  })#Observe closing  
+  
+  observeEvent(input$Submit_spec,{
+    #Get identified spectra
+    IdentSpectra <- Parse.Spectrum(Result.Path)
+    print(head(IdentSpectra))
+    #Remove identified spectra
+    NewSpectra <- RemoveIdentification(SpectraDF =  SpecDF, Spec.ID = IdentSpectra)
+    print(head(NewSpectra))
+    #Write spectra to file 
+    WriteSpectra(NewSpectra = NewSpectra, FilePath = OutpathSpec, FileName = "NewSpectra.MGF")
+    
+    shinyalert(title = "Spectral identification",text = "Spectral library generated!", type = "success")
   })
 }
 

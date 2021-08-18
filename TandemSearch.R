@@ -7,19 +7,17 @@ TandemSearch <- function(taxon = 'yeast', format = 'peptide',
   taxonomy <- rTTaxo(taxon = taxon, format = format, URL = FastaPath)
   
   param <- rTParam()
-  param <- setParamValue(param, 'protein', 'taxon', value="yeast")
+  param <- setParamValue(param, 'protein', 'taxon', value=taxon)
   param <- setParamValue(param, 'list path', 'taxonomy information', taxonomy)
   param <- setParamValue(param, 'list path', 'default parameters',
                          value=InputPara)
   param <- setParamValue(param, 'spectrum', 'path',
                          value=MGFPath)
   param <- setParamValue(param, 'output', 'xsl path',
-                         value=system.file("extdata/tandem-input-style.xsl", package="rTANDEM"))
+                         value="assets/par files/tandem-style.xsl")
   param <- setParamValue(param, 'output', 'path',
                          value=Output_Path)
   
   result.path <- tandem(param)
-  
-  result.R <- GetResultsFromXML(result.path)
-  return(result.R)
+  return(result.path)
 }
