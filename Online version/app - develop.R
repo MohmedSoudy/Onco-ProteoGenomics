@@ -10,11 +10,11 @@ library(markdown)
 library(rTANDEM)
 library(XML)
 library(DT)
-source("Shiny/Scripts/ConstructSpectra.R")
-source("Shiny/Scripts/TandemSearch.R")
-source("Shiny/Scripts/RemoveIdentification.R")
-source("Shiny/Scripts/Pars Spectrum.R")
-source("Shiny/Scripts/WriteSpectra.R")
+source("Scripts/ConstructSpectra.R")
+source("Scripts/TandemSearch.R")
+source("Scripts/RemoveIdentification.R")
+source("Scripts/Pars Spectrum.R")
+source("Scripts/WriteSpectra.R")
 
 
 ui <- dashboardPage(
@@ -39,7 +39,7 @@ ui <- dashboardPage(
     tabItems(
       # Boxes need to be put in a row (or column)
       tabItem(tabName = "Doc",
-              includeMarkdown("Shiny/assets/Documentation.md")), #Documentation 
+              includeMarkdown("assets/Documentation.md")), #Documentation 
       tabItem(tabName = "upload",
               h2("Upload your spectral files to start the analysis"),
               h6("Spectral files shoud be MGF or RAW files"),
@@ -126,7 +126,7 @@ server <- function(input, output, session) {
    shinyalert(title = "Spectral indexing", text = paste0("Number of spectra in file: ", dim(SpecDF)[1]), type = "success")
     #Perform search 
     Result.Path <<- TandemSearch(taxon = input$Taxonomy, MGFPath = MGF_Path, FastaPath = DBPath,
-                 InputPara = "Shiny/assets/par files/default_input.xml", Output_Path = paste0(Outpath, "/output.xml"))
+                 InputPara = "assets/par files/default_input.xml", Output_Path = paste0(Outpath, "/output.xml"))
     Results <<- GetResultsFromXML(Result.Path)
     Results@spectra
     
